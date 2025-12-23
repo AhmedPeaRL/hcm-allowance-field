@@ -1,0 +1,49 @@
+name: allowance-check
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - field/**
+      - interfaces/**
+      - intake/**
+      - dispatch/**
+      - traces/**
+
+jobs:
+  allowance:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Verify allowance field state
+        run: |
+          if [ ! -f field/allowance.lock ]; then
+            echo "Allowance lock missing. No passage."
+            exit 0
+          fi
+
+          if ! grep -q "status: allowed" field/allowance.lock; then
+            echo "Field present, but not allowing."
+            exit 0
+          fi
+
+          echo "Allowance confirmed."
+
+      - name: Register silent passage
+        run: |
+          mkdir -p traces
+          echo "A passage was possible." >> traces/passage.log
+
+      - name: Commit trace if changed
+        run: |
+          git config user.name "hcm-allowance"
+          git config user.email "allowance@hcm.local"
+
+          git add traces/passage.log || true
+          git commit -m "trace: allowance acknowledged" || echo "No trace to commit"
+          git push || echo "No push required"
+
+          
