@@ -5,20 +5,18 @@ on:
   push:
     paths:
       - field/**
-      - interfaces/**
-      - intake/**
       - dispatch/**
-      - traces/**
+      - interfaces/**
 
 jobs:
   allowance:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
+      - name: Checkout field
         uses: actions/checkout@v4
 
-      - name: Verify allowance field state
+      - name: Verify allowance lock
         run: |
           if [ ! -f field/allowance.lock ]; then
             echo "Allowance lock missing. No passage."
@@ -32,18 +30,25 @@ jobs:
 
           echo "Allowance confirmed."
 
-      - name: Register silent passage
+      - name: Check dispatch possibility
+        run: |
+          if [ -f dispatch/outbound/allowed.log ]; then
+            echo "Dispatch possible."
+          else
+            echo "No dispatch channel opened."
+            exit 0
+          fi
+
+      - name: Register silent trace
         run: |
           mkdir -p traces
-          echo "A passage was possible." >> traces/passage.log
+          echo "A passage with possible dispatch occurred." >> traces/passage.log
 
-      - name: Commit trace if changed
+      - name: Commit trace if permitted
         run: |
           git config user.name "hcm-allowance"
           git config user.email "allowance@hcm.local"
 
           git add traces/passage.log || true
-          git commit -m "trace: allowance acknowledged" || echo "No trace to commit"
-          git push || echo "No push required"
-
-          
+          git commit -m "trace: allowance with dispatch potential" || echo "No trace to commit"
+          git push || echo "No push permitted"
